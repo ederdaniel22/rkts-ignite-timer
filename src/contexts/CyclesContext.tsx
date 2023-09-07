@@ -1,10 +1,11 @@
-import { ReactNode, createContext, useReducer, useState } from "react";
+import { ReactNode, createContext, useEffect, useReducer, useState } from "react";
 import {Cycle, cyclesReducer} from '../reducers/cycles/reducer'
 import { 
   addNewCycleAction, 
   interruptCurrentCycleAction, 
   markCurrentCycleAsFinishedAction
  } from "../reducers/cycles/actions";
+import { differenceInSeconds } from "date-fns";
 
 interface CreateCycleData{
 task: string;
@@ -35,20 +36,43 @@ export function CyclesContextProvider({
   {
     cycles: [],
     activeCycleId: null,
+  }, 
+  (initialState) => {
+    const storedStateAsJSON = localStorage.getItem(
+      '@ignite-timer:cycles-state-1.0.0'
+      )
+    if(storedStateAsJSON){
+      return JSON.parse(storedStateAsJSON);
+    }
+    return {
+     initialState
+    }
+  })
+  const {cycles, activeCycleId} = cyclesState;
+  const activeCycle = cycles.find(cycle => cycle.id === activeCycleId)
+
+
+  const [amountSecondsPassed, setAmountSecondsPassed] = useState(()=> {
+    if(activeCycle) {
+     return differenceInSeconds(
+        new Date(), 
+        new Date(activeCycle.startDate))
+      }
+      return 0
   })
 
-  const [amountSecondsPassed, setAmountSecondsPassed] = useState(0)
+  useEffect(() => {
+    const stateJSON = JSON.stringify(cyclesState)
+    localStorage.setItem('@ignite-timer:cycles-state-1.0.0', stateJSON)
+  }, [cyclesState])
 
-  const {cycles, activeCycleId} = cyclesState;
-
-  const activeCycle = cycles.find(cycle => cycle.id === activeCycleId)
 
   function setSecondsPassed(seconds: number){
     setAmountSecondsPassed(seconds)
   }
 
   function markCurrentCycleAsFinished(){
-    dispatch(markCurrentCycleAsFinishedAction)
+    dispatch(markCurrentCycleAsFinishedAction())
   }
 
   function createNewCicle(data: CreateCycleData){
@@ -67,7 +91,7 @@ export function CyclesContextProvider({
   }
   
   function interruptCurrentCycle(){
-    dispatch(interruptCurrentCycleAction)
+    dispatch(interruptCurrentCycleAction())
   }
 
   return(
